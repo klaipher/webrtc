@@ -281,6 +281,10 @@ PRIVATE
     rtc_base/operations_chain.cc
     rtc_base/operations_chain.h
     rtc_base/openssl.h
+    rtc_base/boringssl_certificate.cc
+    rtc_base/boringssl_certificate.h
+    rtc_base/boringssl_identity.cc
+    rtc_base/boringssl_identity.h
     rtc_base/openssl_adapter.cc
     rtc_base/openssl_adapter.h
     rtc_base/openssl_certificate.cc

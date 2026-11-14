@@ -15,7 +15,7 @@ libyuv, system libraries) are printed to stderr by the script and are not listed
 
 | Platform | Build file | Sources | List |
 |---|---|---|---|
-| macOS | `CMakeLists.txt` + `cmake/*.cmake` (this repository) | 1,462 | `build-files/mac-cmake.txt` |
+| macOS | `CMakeLists.txt` + `cmake/*.cmake` (this repository) | 1,464 | `build-files/mac-cmake.txt` |
 | Android | `TMessagesProj/jni/voip/CMakeLists.txt` (app) | 1,343 | `build-files/android-cmake.txt` |
 | iOS | `third-party/webrtc/BUILD` (app) | 1,288 | `build-files/ios-bazel.txt` |
 
