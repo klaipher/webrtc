@@ -19,7 +19,7 @@ libyuv, system libraries) are printed to stderr by the script and are not listed
 | Android | `TMessagesProj/jni/voip/CMakeLists.txt` (app) | 1,343 | `build-files/android-cmake.txt` |
 | iOS | `third-party/webrtc/BUILD` (app) | 1,288 | `build-files/ios-bazel.txt` |
 
-1,113 files are compiled by all three (`build-files/common-all-three.txt`). The platform-only parts:
+1,115 files are compiled by all three (`build-files/common-all-three.txt`). The platform-only parts:
 
 - **iOS only (9)**: UIKit/Metal views and `UIDevice` helpers under `sdk/objc` (7), and the two
   `api/task_queue/default_task_queue_factory_*libevent*.cc` files the iOS BUILD names (the iOS build uses the GCD task queue).

@@ -940,6 +940,8 @@ rtc_base/async_udp_socket.cc
 rtc_base/bit_buffer.cc
 rtc_base/bitrate_tracker.cc
 rtc_base/bitstream_reader.cc
+rtc_base/boringssl_certificate.cc
+rtc_base/boringssl_identity.cc
 rtc_base/buffer_queue.cc
 rtc_base/byte_buffer.cc
 rtc_base/callback_list.cc
