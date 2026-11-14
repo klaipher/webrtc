@@ -385,7 +385,7 @@ void LinkEmulation::Process(Timestamp at_time) {
   }
 }
 
-NetworkRouterNode::NetworkRouterNode(absl::Nonnull<TaskQueueBase*> task_queue)
+NetworkRouterNode::NetworkRouterNode(TaskQueueBase* absl_nonnull task_queue)
     : task_queue_(task_queue) {}
 
 void NetworkRouterNode::OnPacketReceived(EmulatedIpPacket packet) {
@@ -461,7 +461,7 @@ void NetworkRouterNode::SetFilter(
 
 EmulatedNetworkNode::EmulatedNetworkNode(
     Clock* clock,
-    absl::Nonnull<TaskQueueBase*> task_queue,
+    TaskQueueBase* absl_nonnull task_queue,
     std::unique_ptr<NetworkBehaviorInterface> network_behavior,
     EmulatedNetworkStatsGatheringMode stats_gathering_mode)
     : router_(task_queue),
@@ -515,7 +515,7 @@ EmulatedEndpointImpl::Options::Options(
 EmulatedEndpointImpl::EmulatedEndpointImpl(
     const Options& options,
     bool is_enabled,
-    absl::Nonnull<TaskQueueBase*> task_queue,
+    TaskQueueBase* absl_nonnull task_queue,
     Clock* clock)
     : options_(options),
       is_enabled_(is_enabled),

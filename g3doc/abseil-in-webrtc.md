@@ -29,7 +29,8 @@ will generate a shared library.
 * `absl::bind_front`
 * `absl::Cleanup`
 * `absl::InlinedVector`
-* `absl::Nonnull` and `absl::Nullable`
+* `absl_nonnull` and `absl_nullable` (the attribute macros from `absl/base/nullability.h`;
+  the `absl::Nonnull<T>` and `absl::Nullable<T>` templates are gone since abseil 20250512)
 * `absl::WrapUnique`
 * `absl::optional` and related stuff from `absl/types/optional.h`.
 * `absl::string_view`

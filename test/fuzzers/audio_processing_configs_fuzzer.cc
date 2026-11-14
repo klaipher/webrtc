@@ -37,7 +37,7 @@ const std::string kFieldTrialNames[] = {
 rtc::scoped_refptr<AudioProcessing> CreateApm(
     test::FuzzDataHelper* fuzz_data,
     std::string* field_trial_string,
-    absl::Nonnull<TaskQueueBase*> worker_queue) {
+    TaskQueueBase* absl_nonnull worker_queue) {
   // Parse boolean values for optionally enabling different
   // configurable public components of APM.
   bool use_ts = fuzz_data->ReadOrDefaultValue(true);
