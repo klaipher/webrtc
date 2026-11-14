@@ -519,6 +519,7 @@ void RtpPayloadParams::Vp8ToGeneric(const CodecSpecificInfoVP8& vp8_info,
   generic.temporal_index = temporal_index;
 
   // Generate decode target indications.
+  RTC_DCHECK_LT(temporal_index, kMaxTemporalStreams);
   generic.decode_target_indications.resize(kMaxTemporalStreams);
   auto it = std::fill_n(generic.decode_target_indications.begin(),
                         temporal_index, DecodeTargetIndication::kNotPresent);
