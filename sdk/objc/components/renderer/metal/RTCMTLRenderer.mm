@@ -12,6 +12,10 @@
 
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
+#import <TargetConditionals.h>
+#if TARGET_OS_OSX
+#import <CoreGraphics/CoreGraphics.h>
+#endif
 
 #import "base/RTCLogging.h"
 #import "base/RTCVideoFrame.h"
@@ -226,7 +230,14 @@ static const NSInteger kMaxInflightBuffers = 1;
 
 - (BOOL)setupMetal {
   // Set the view to use the default device.
+#if TARGET_OS_OSX
+  // Nanogram (macOS only, from klaipher/tg_owt nanogram-mac): render on the GPU that drives
+  // the main display, not the system default (matters on Macs with a discrete GPU).
+  // iOS has a single GPU and keeps MTLCreateSystemDefaultDevice().
+  _device = CGDirectDisplayCopyCurrentMetalDevice(CGMainDisplayID());
+#else
   _device = MTLCreateSystemDefaultDevice();
+#endif
   if (!_device) {
     return NO;
   }
