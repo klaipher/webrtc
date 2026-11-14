@@ -4,3 +4,11 @@
 	path = third_party/abseil-cpp
 	url = https://github.com/abseil/abseil-cpp.git
 	shallow = true
+[submodule "third_party/libsrtp"]
+	path = third_party/libsrtp
+	url = https://github.com/cisco/libsrtp.git
+	shallow = true
+[submodule "third_party/crc32c/src"]
+	path = third_party/crc32c/src
+	url = https://github.com/google/crc32c.git
+	shallow = true
