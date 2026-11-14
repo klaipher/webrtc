@@ -37,3 +37,62 @@ INTERFACE
     absl::log
     absl::check
 )
+
+# Nanogram: tg_owt built abseil as an OBJECT library, so its objects ended up inside libtg_owt.a, the only
+# WebRTC archive the Mac app links. abseil's own targets are separate STATIC archives, and a static
+# library does not absorb the archives it links. On Apple platforms the abseil archives are therefore
+# merged into libtg_owt.a after it is built (libtool -static). Set TG_OWT_MERGE_ABSEIL=OFF when the final
+# link names the abseil archives itself. Verify with `nm -u` on the merged archive.
+function(tg_owt_collect_absl_archives out_var)
+    set(todo ${ARGN})
+    set(seen "")
+    set(archives "")
+    while (NOT "${todo}" STREQUAL "")
+        list(POP_FRONT todo item)
+        string(REGEX REPLACE "^\\$<LINK_ONLY:(.*)>$" "\\1" item "${item}")
+        if (NOT item MATCHES "^absl(::|_)" OR NOT TARGET ${item})
+            continue()
+        endif()
+        get_target_property(aliased ${item} ALIASED_TARGET)
+        if (aliased)
+            set(item ${aliased})
+        endif()
+        if (item IN_LIST seen)
+            continue()
+        endif()
+        list(APPEND seen ${item})
+        get_target_property(item_type ${item} TYPE)
+        if (item_type STREQUAL "STATIC_LIBRARY")
+            list(APPEND archives ${item})
+            get_target_property(item_deps ${item} LINK_LIBRARIES)
+            if (item_deps)
+                list(APPEND todo ${item_deps})
+            endif()
+        endif()
+        get_target_property(item_iface_deps ${item} INTERFACE_LINK_LIBRARIES)
+        if (item_iface_deps)
+            list(APPEND todo ${item_iface_deps})
+        endif()
+    endwhile()
+    set(${out_var} ${archives} PARENT_SCOPE)
+endfunction()
+
+option(TG_OWT_MERGE_ABSEIL "Merge the abseil archives into libtg_owt.a (Apple platforms)." ON)
+if (APPLE AND TG_OWT_MERGE_ABSEIL)
+    tg_owt_collect_absl_archives(TG_OWT_ABSEIL_ARCHIVES
+        absl::base absl::strings absl::str_format absl::cord absl::synchronization absl::time
+        absl::status absl::statusor absl::hash absl::flat_hash_map absl::flat_hash_set absl::flags
+        absl::flags_parse absl::random_random absl::random_distributions absl::crc32c absl::log absl::check)
+    set(TG_OWT_ABSEIL_ARCHIVE_FILES "")
+    foreach (archive ${TG_OWT_ABSEIL_ARCHIVES})
+        list(APPEND TG_OWT_ABSEIL_ARCHIVE_FILES "$<TARGET_FILE:${archive}>")
+    endforeach()
+    # Nanogram: tg_owt is defined before this file is included (see CMakeLists.txt).
+    add_dependencies(tg_owt ${TG_OWT_ABSEIL_ARCHIVES})
+    add_custom_command(TARGET tg_owt POST_BUILD
+        COMMAND libtool -static -o "$<TARGET_FILE:tg_owt>.merged"
+            "$<TARGET_FILE:tg_owt>" ${TG_OWT_ABSEIL_ARCHIVE_FILES}
+        COMMAND ${CMAKE_COMMAND} -E rename "$<TARGET_FILE:tg_owt>.merged" "$<TARGET_FILE:tg_owt>"
+        COMMENT "Merging the abseil archives into libtg_owt.a"
+        VERBATIM)
+endif()

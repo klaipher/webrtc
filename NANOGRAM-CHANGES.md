@@ -55,3 +55,10 @@ Format: docs/fork-records.md in klaipher/nanogram.
 - Why: it imports `EglBase.EglConnection`, which the Telegram-modified `EglBase.java` (folded in with the Android Java, 8cf9fad) does not have, so Gradle compiling the srcDirs failed. The Android app never carried the class. The srcDirs class set is now exactly the 173 files of the old `org/webrtc` set (checked in both directions).
 - Where: `sdk/android/api/org/webrtc/`.
 - Upstream: no. Sync: if `EglBase.java` ever gets `EglConnection` back, the class can return.
+
+### abseil archives merged into libtg_owt.a (Apple)
+- What: after `tg_owt` is built, a POST_BUILD step runs `libtool -static` over `libtg_owt.a` plus every abseil STATIC archive reachable from the target list in `cmake/libabsl.cmake`. Option `TG_OWT_MERGE_ABSEIL=OFF` skips it.
+- Why: tg_owt compiled abseil into `libtg_owt.a` (OBJECT library). With the official abseil as its own CMake project the archives are separate, and the Mac app links only `libtg_owt.a`, so abseil symbols (Mutex, raw_logging, strings) would be undefined.
+- Where: `cmake/libabsl.cmake` (`tg_owt_collect_absl_archives`). Android links into one .so and is unaffected.
+- Upstream: no. Sync: none.
+- To test: `nm -u` on the merged archive shows no `absl` symbols; the Mac app links.
