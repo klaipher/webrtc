@@ -63,7 +63,7 @@ api/rtp_receiver_interface.cc
 api/rtp_sender_interface.cc
 api/rtp_transceiver_interface.cc
 api/sctp_transport_interface.cc
-api/task_queue/default_task_queue_factory_libevent.cc
+api/task_queue/default_task_queue_factory_stdlib.cc
 api/task_queue/pending_task_safety_flag.cc
 api/task_queue/task_queue_base.cc
 api/transport/bitrate_settings.cc
@@ -176,6 +176,7 @@ call/video_send_stream.cc
 common_audio/audio_converter.cc
 common_audio/audio_util.cc
 common_audio/channel_buffer.cc
+common_audio/fir_filter_avx2.cc
 common_audio/fir_filter_c.cc
 common_audio/fir_filter_factory.cc
 common_audio/fir_filter_neon.cc
@@ -186,6 +187,7 @@ common_audio/resampler/push_resampler.cc
 common_audio/resampler/push_sinc_resampler.cc
 common_audio/resampler/resampler.cc
 common_audio/resampler/sinc_resampler.cc
+common_audio/resampler/sinc_resampler_avx2.cc
 common_audio/resampler/sinc_resampler_neon.cc
 common_audio/resampler/sinc_resampler_sse.cc
 common_audio/resampler/sinusoidal_linear_chirp_source.cc
@@ -490,7 +492,9 @@ modules/audio_mixer/frame_combiner.cc
 modules/audio_mixer/gain_change_calculator.cc
 modules/audio_mixer/sine_wave_generator.cc
 modules/audio_processing/aec3/adaptive_fir_filter.cc
+modules/audio_processing/aec3/adaptive_fir_filter_avx2.cc
 modules/audio_processing/aec3/adaptive_fir_filter_erl.cc
+modules/audio_processing/aec3/adaptive_fir_filter_erl_avx2.cc
 modules/audio_processing/aec3/aec3_common.cc
 modules/audio_processing/aec3/aec3_fft.cc
 modules/audio_processing/aec3/aec_state.cc
@@ -517,10 +521,12 @@ modules/audio_processing/aec3/echo_remover_metrics.cc
 modules/audio_processing/aec3/erl_estimator.cc
 modules/audio_processing/aec3/erle_estimator.cc
 modules/audio_processing/aec3/fft_buffer.cc
+modules/audio_processing/aec3/fft_data_avx2.cc
 modules/audio_processing/aec3/filter_analyzer.cc
 modules/audio_processing/aec3/frame_blocker.cc
 modules/audio_processing/aec3/fullband_erle_estimator.cc
 modules/audio_processing/aec3/matched_filter.cc
+modules/audio_processing/aec3/matched_filter_avx2.cc
 modules/audio_processing/aec3/matched_filter_lag_aggregator.cc
 modules/audio_processing/aec3/moving_average.cc
 modules/audio_processing/aec3/multi_channel_content_detector.cc
@@ -546,6 +552,7 @@ modules/audio_processing/aec3/subtractor_output_analyzer.cc
 modules/audio_processing/aec3/suppression_filter.cc
 modules/audio_processing/aec3/suppression_gain.cc
 modules/audio_processing/aec3/transparent_mode.cc
+modules/audio_processing/aec3/vector_math_avx2.cc
 modules/audio_processing/aec_dump/null_aec_dump_factory.cc
 modules/audio_processing/aecm/aecm_core.cc
 modules/audio_processing/aecm/aecm_core_c.cc
@@ -1175,7 +1182,6 @@ rtc_base/system/file_wrapper.cc
 rtc_base/system/warn_current_thread_is_deadlocked.cc
 rtc_base/system_time.cc
 rtc_base/task_queue.cc
-rtc_base/task_queue_libevent.cc
 rtc_base/task_queue_stdlib.cc
 rtc_base/task_utils/repeating_task.cc
 rtc_base/third_party/base64/base64.cc
@@ -1285,20 +1291,9 @@ system_wrappers/source/field_trial.cc
 system_wrappers/source/metrics.cc
 system_wrappers/source/rtp_to_ntp_estimator.cc
 system_wrappers/source/sleep.cc
-third_party/libevent/buffer.c
-third_party/libevent/epoll.c
-third_party/libevent/evbuffer.c
-third_party/libevent/evdns.c
-third_party/libevent/event.c
-third_party/libevent/event_tagging.c
-third_party/libevent/evrpc.c
-third_party/libevent/evutil.c
-third_party/libevent/http.c
-third_party/libevent/log.c
-third_party/libevent/poll.c
-third_party/libevent/select.c
-third_party/libevent/signal.c
-third_party/libevent/strlcpy.c
+third_party/pffft/src/fftpack.c
+third_party/pffft/src/pffft.c
+third_party/rnnoise/src/rnn_vad_weights.cc
 video/adaptation/balanced_constraint.cc
 video/adaptation/bandwidth_quality_scaler_resource.cc
 video/adaptation/bitrate_constraint.cc

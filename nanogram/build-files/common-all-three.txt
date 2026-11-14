@@ -58,6 +58,7 @@ api/rtp_receiver_interface.cc
 api/rtp_sender_interface.cc
 api/rtp_transceiver_interface.cc
 api/sctp_transport_interface.cc
+api/task_queue/default_task_queue_factory_stdlib.cc
 api/task_queue/pending_task_safety_flag.cc
 api/task_queue/task_queue_base.cc
 api/transport/bitrate_settings.cc
@@ -213,6 +214,7 @@ common_audio/signal_processing/sqrt_of_one_minus_x_squared.c
 common_audio/signal_processing/vector_scaling_operations.c
 common_audio/smoothing_filter.cc
 common_audio/third_party/ooura/fft_size_128/ooura_fft.cc
+common_audio/third_party/ooura/fft_size_256/fft4g.cc
 common_audio/third_party/spl_sqrt_floor/spl_sqrt_floor.c
 common_audio/vad/vad.cc
 common_audio/vad/vad_core.c
@@ -1059,6 +1061,9 @@ system_wrappers/source/field_trial.cc
 system_wrappers/source/metrics.cc
 system_wrappers/source/rtp_to_ntp_estimator.cc
 system_wrappers/source/sleep.cc
+third_party/pffft/src/fftpack.c
+third_party/pffft/src/pffft.c
+third_party/rnnoise/src/rnn_vad_weights.cc
 video/adaptation/balanced_constraint.cc
 video/adaptation/bandwidth_quality_scaler_resource.cc
 video/adaptation/bitrate_constraint.cc

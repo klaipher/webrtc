@@ -34,7 +34,7 @@ Format: docs/fork-records.md in klaipher/nanogram.
     `audio_device_impl.cc`), iSAC, JVM thread tracking, H.265 parser bounds checks, the `org.webrtc` Java the app
     modifies, and the generated JNI headers (`nanogram/android-generated`).
   - Dependencies: abseil LTS 20260817.0, libsrtp v2.5.0 and crc32c 21fc8ef3 as submodules; pffft, rnnoise (the
-    Chromium VAD weights), libevent and jni_zero as snapshots under `third_party/`. usrsctp is gone.
+    Chromium VAD weights) and jni_zero as snapshots under `third_party/`. usrsctp and libevent are gone.
   - `absl::Nonnull<T>`/`absl::Nullable<T>` became `T absl_nonnull`/`T absl_nullable` (91 uses, 24 files); the debug
     log counters were removed.
 - Why: a fix in shared native code has to land once and reach every app.
@@ -62,3 +62,8 @@ Format: docs/fork-records.md in klaipher/nanogram.
 - Where: `cmake/libabsl.cmake` (`tg_owt_collect_absl_archives`). Android links into one .so and is unaffected.
 - Upstream: no. Sync: none.
 - To test: `nm -u` on the merged archive shows no `absl` symbols; the Mac app links.
+
+### libevent removed, build lists regenerated
+- What: `third_party/libevent` is deleted; `nanogram/build-files/*.txt` and `BUILD-FILES.md` are regenerated from the integrated app build files.
+- Why: Android moved to the stdlib task queue, iOS never compiled libevent and the Mac never had it, so no app builds it. The lists were stale (libevent, `default_task_queue_factory_libevent.cc`, AVX2 and pffft/rnnoise lines).
+- Upstream: no. Sync: re-run `gen_build_lists.py` as described in BUILD-FILES.md.
