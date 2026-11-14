@@ -1,12 +1,13 @@
 # webrtc (Nanogram fork) changelog
 
-Branch `nanogram-security-fixes`, the WebRTC tree built by Nanogram for iOS (`third-party/webrtc/webrtc`). Base: `M123` (ali-fareed/webrtc).
+Branch `nanogram` (alias `nanogram-security-fixes`), the WebRTC tree built by Nanogram for iOS, macOS and Android. Base: `M123` (ali-fareed/webrtc).
 
 Newest first. Fork-only commits, grouped by day; entries for new work go on top under `## Unreleased`, then are
 moved under their date when the app repositories pin them.
 
 ## Unreleased
 
+- One source for iOS, macOS and Android: debug-log hunks dropped; abseil LTS 20260817.0 (`absl_nonnull`/`absl_nullable`); libsrtp v2.5.0, crc32c 21fc8ef3, usrsctp removed; pffft, rnnoise, libevent, jni_zero under `third_party/`; macOS audio device, Metal renderer, OpenSSL accessors, include hygiene, ICE comparator fix; Android legacy audio device, iSAC, JVM thread tracking, H.265 bounds checks, Java and generated JNI headers; the CMake build at the repository root with include shims. Details in NANOGRAM-CHANGES.md.
 - Merge Telegram's webrtc 590a8b2 ("Check vector sizes when crossfading from CNG/expand to normal", CVE-2026-9119) into the fork. Its `normal.cc` and `normal.h` are byte-identical to our 0ee3826 (verified with `git diff` of both blobs), so the code stays as is; `normal_unittest.cc` takes upstream's version (our 0ee3826 test edit of `LastModeRfc3389CngSmallInput` is replaced). Merged, not rebased: the pin moves forward without a force-push, and 590a8b2 is now an ancestor, so the next upstream sync starts from it. The other 11 fork fixes are untouched (`git diff` 86cd593..merge touches only `normal_unittest.cc`).
 
 ## 2026-11-04
