@@ -12,9 +12,9 @@ package org.webrtc;
 
 import android.graphics.Matrix;
 import android.opengl.GLES20;
-import android.opengl.GLException;
-import androidx.annotation.Nullable;
 import java.nio.ByteBuffer;
+
+import org.telegram.messenger.FileLog;
 import org.webrtc.VideoFrame.I420Buffer;
 import org.webrtc.VideoFrame.TextureBuffer;
 
@@ -22,9 +22,7 @@ import org.webrtc.VideoFrame.TextureBuffer;
  * Class for converting OES textures to a YUV ByteBuffer. It can be constructed on any thread, but
  * should only be operated from a single thread with an active EGL context.
  */
-public final class YuvConverter {
-  private static final String TAG = "YuvConverter";
-
+public class YuvConverter {
   private static final String FRAGMENT_SHADER =
       // Difference in texture coordinate corresponding to one
       // sub-pixel in the x direction.
@@ -36,7 +34,9 @@ public final class YuvConverter {
       // Since the alpha read from the texture is always 1, this could
       // be written as a mat4 x vec4 multiply. However, that seems to
       // give a worse framerate, possibly because the additional
-      // multiplies by 1.0 consume resources.
+      // multiplies by 1.0 consume resources. TODO(nisse): Could also
+      // try to do it as a vec3 x mat3x4, followed by an add in of a
+      // constant vector.
       + "  gl_FragColor.r = coeffs.a + dot(coeffs.rgb,\n"
       + "      sample(tc - 1.5 * xUnit).rgb);\n"
       + "  gl_FragColor.g = coeffs.a + dot(coeffs.rgb,\n"
@@ -124,17 +124,9 @@ public final class YuvConverter {
   }
 
   /** Converts the texture buffer to I420. */
-  @Nullable
   public I420Buffer convert(TextureBuffer inputTextureBuffer) {
-    try {
-      return convertInternal(inputTextureBuffer);
-    } catch (GLException e) {
-      Logging.w(TAG, "Failed to convert TextureBuffer", e);
-    }
-    return null;
-  }
+    threadChecker.checkIsOnValidThread();
 
-  private I420Buffer convertInternal(TextureBuffer inputTextureBuffer) {
     TextureBuffer preparedBuffer = (TextureBuffer) videoFrameDrawer.prepareBufferForViewportSize(
         inputTextureBuffer, inputTextureBuffer.getWidth(), inputTextureBuffer.getHeight());
 
@@ -151,7 +143,7 @@ public final class YuvConverter {
     //    +----+----+
     //
     // In memory, we use the same stride for all of Y, U and V. The
-    // U data starts at offset `height` * `stride` from the Y data,
+    // U data starts at offset |height| * |stride| from the Y data,
     // and the V data starts at at offset |stride/2| from the U
     // data, with rows of U and V data alternating.
     //
@@ -159,12 +151,12 @@ public final class YuvConverter {
     // a single byte per pixel (EGL10.EGL_COLOR_BUFFER_TYPE,
     // EGL10.EGL_LUMINANCE_BUFFER,), but that seems to be
     // unsupported by devices. So do the following hack: Allocate an
-    // RGBA buffer, of width `stride`/4. To render each of these
+    // RGBA buffer, of width |stride|/4. To render each of these
     // large pixels, sample the texture at 4 different x coordinates
     // and store the results in the four components.
     //
     // Since the V data needs to start on a boundary of such a
-    // larger pixel, it is not sufficient that `stride` is even, it
+    // larger pixel, it is not sufficient that |stride| is even, it
     // has to be a multiple of 8 pixels.
     final int frameWidth = preparedBuffer.getWidth();
     final int frameHeight = preparedBuffer.getHeight();
@@ -183,37 +175,41 @@ public final class YuvConverter {
     renderMatrix.preScale(1f, -1f);
     renderMatrix.preTranslate(-0.5f, -0.5f);
 
-    i420TextureFrameBuffer.setSize(viewportWidth, totalHeight);
+    try {
+      i420TextureFrameBuffer.setSize(viewportWidth, totalHeight);
 
-    // Bind our framebuffer.
-    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, i420TextureFrameBuffer.getFrameBufferId());
-    GlUtil.checkNoGLES2Error("glBindFramebuffer");
+      // Bind our framebuffer.
+      GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, i420TextureFrameBuffer.getFrameBufferId());
+      GlUtil.checkNoGLES2Error("glBindFramebuffer");
 
-    // Draw Y.
-    shaderCallbacks.setPlaneY();
-    VideoFrameDrawer.drawTexture(drawer, preparedBuffer, renderMatrix, frameWidth, frameHeight,
-        /* viewportX= */ 0, /* viewportY= */ 0, viewportWidth,
-        /* viewportHeight= */ frameHeight);
+      // Draw Y.
+      shaderCallbacks.setPlaneY();
+      VideoFrameDrawer.drawTexture(drawer, preparedBuffer, renderMatrix, frameWidth, frameHeight, frameWidth, frameHeight,
+              /* viewportX= */ 0, /* viewportY= */ 0, viewportWidth,
+              /* viewportHeight= */ frameHeight, false);
 
-    // Draw U.
-    shaderCallbacks.setPlaneU();
-    VideoFrameDrawer.drawTexture(drawer, preparedBuffer, renderMatrix, frameWidth, frameHeight,
-        /* viewportX= */ 0, /* viewportY= */ frameHeight, viewportWidth / 2,
-        /* viewportHeight= */ uvHeight);
+      // Draw U.
+      shaderCallbacks.setPlaneU();
+      VideoFrameDrawer.drawTexture(drawer, preparedBuffer, renderMatrix, frameWidth, frameHeight, frameWidth, frameHeight,
+              /* viewportX= */ 0, /* viewportY= */ frameHeight, viewportWidth / 2,
+              /* viewportHeight= */ uvHeight, false);
 
-    // Draw V.
-    shaderCallbacks.setPlaneV();
-    VideoFrameDrawer.drawTexture(drawer, preparedBuffer, renderMatrix, frameWidth, frameHeight,
-        /* viewportX= */ viewportWidth / 2, /* viewportY= */ frameHeight, viewportWidth / 2,
-        /* viewportHeight= */ uvHeight);
+      // Draw V.
+      shaderCallbacks.setPlaneV();
+      VideoFrameDrawer.drawTexture(drawer, preparedBuffer, renderMatrix, frameWidth, frameHeight, frameWidth, frameHeight,
+              /* viewportX= */ viewportWidth / 2, /* viewportY= */ frameHeight, viewportWidth / 2,
+              /* viewportHeight= */ uvHeight, false);
 
-    GLES20.glReadPixels(0, 0, i420TextureFrameBuffer.getWidth(), i420TextureFrameBuffer.getHeight(),
-        GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, i420ByteBuffer);
+      GLES20.glReadPixels(0, 0, i420TextureFrameBuffer.getWidth(), i420TextureFrameBuffer.getHeight(),
+              GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, i420ByteBuffer);
 
-    GlUtil.checkNoGLES2Error("YuvConverter.convert");
+      GlUtil.checkNoGLES2Error("YuvConverter.convert");
 
-    // Restore normal framebuffer.
-    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+      // Restore normal framebuffer.
+      GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+    } catch (Exception e) {
+      FileLog.e(e);
+    }
 
     // Prepare Y, U, and V ByteBuffer slices.
     final int yPos = 0;

@@ -10,6 +10,7 @@
 
 package org.webrtc;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -20,14 +21,18 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.os.Handler;
+import androidx.annotation.Nullable;
 import android.util.Range;
 import android.view.Surface;
-import androidx.annotation.Nullable;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import org.telegram.ui.Stories.LivePlayer;
 import org.webrtc.CameraEnumerationAndroid.CaptureFormat;
 
+@TargetApi(21)
 class Camera2Session implements CameraSession {
   private static final String TAG = "Camera2Session";
 
@@ -50,6 +55,8 @@ class Camera2Session implements CameraSession {
   private final int width;
   private final int height;
   private final int framerate;
+
+  private OrientationHelper orientationHelper;
 
   // Initialized at start
   private CameraCharacteristics cameraCharacteristics;
@@ -122,7 +129,7 @@ class Camera2Session implements CameraSession {
       try {
         camera.createCaptureSession(
             Arrays.asList(surface), new CaptureSessionCallback(), cameraThreadHandler);
-      } catch (CameraAccessException e) {
+      } catch (CameraAccessException | IllegalStateException | SecurityException e) {
         reportError("Failed to create capture session. " + e);
         return;
       }
@@ -173,7 +180,7 @@ class Camera2Session implements CameraSession {
         captureRequestBuilder.addTarget(surface);
         session.setRepeatingRequest(
             captureRequestBuilder.build(), new CameraCaptureCallback(), cameraThreadHandler);
-      } catch (CameraAccessException e) {
+      } catch (CameraAccessException | IllegalStateException | SecurityException e) {
         reportError("Failed to start capture request. " + e);
         return;
       }
@@ -198,9 +205,9 @@ class Camera2Session implements CameraSession {
         // Also, undo camera orientation, we report it as rotation instead.
         final VideoFrame modifiedFrame =
             new VideoFrame(CameraSession.createTextureBufferWithModifiedTransformMatrix(
-                               (TextureBufferImpl) frame.getBuffer(),
-                               /* mirror= */ isCameraFrontFacing,
-                               /* rotation= */ -cameraOrientation),
+                (TextureBufferImpl) frame.getBuffer(),
+                /* mirror= */ isCameraFrontFacing,
+                /* rotation= */ -cameraOrientation),
                 /* rotation= */ getFrameOrientation(), frame.getTimestampNs());
         events.onFrameCaptured(Camera2Session.this, modifiedFrame);
         modifiedFrame.release();
@@ -229,16 +236,14 @@ class Camera2Session implements CameraSession {
       // If no optical mode is available, try software.
       final int[] availableVideoStabilization = cameraCharacteristics.get(
           CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES);
-      if (availableVideoStabilization != null) {
-        for (int mode : availableVideoStabilization) {
-          if (mode == CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON) {
-            captureRequestBuilder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
-                CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON);
-            captureRequestBuilder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
-                CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF);
-            Logging.d(TAG, "Using video stabilization.");
-            return;
-          }
+      for (int mode : availableVideoStabilization) {
+        if (mode == CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON) {
+          captureRequestBuilder.set(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+              CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON);
+          captureRequestBuilder.set(CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+              CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF);
+          Logging.d(TAG, "Using video stabilization.");
+          return;
         }
       }
       Logging.d(TAG, "Stabilization not available.");
@@ -268,16 +273,16 @@ class Camera2Session implements CameraSession {
   }
 
   public static void create(CreateSessionCallback callback, Events events,
-      Context applicationContext, CameraManager cameraManager,
-      SurfaceTextureHelper surfaceTextureHelper, String cameraId, int width, int height,
-      int framerate) {
+                            Context applicationContext, CameraManager cameraManager,
+                            SurfaceTextureHelper surfaceTextureHelper, String cameraId, int width, int height,
+                            int framerate) {
     new Camera2Session(callback, events, applicationContext, cameraManager, surfaceTextureHelper,
         cameraId, width, height, framerate);
   }
 
   private Camera2Session(CreateSessionCallback callback, Events events, Context applicationContext,
-      CameraManager cameraManager, SurfaceTextureHelper surfaceTextureHelper, String cameraId,
-      int width, int height, int framerate) {
+                         CameraManager cameraManager, SurfaceTextureHelper surfaceTextureHelper, String cameraId,
+                         int width, int height, int framerate) {
     Logging.d(TAG, "Create new camera2 session on camera " + cameraId);
 
     constructionTimeNs = System.nanoTime();
@@ -292,6 +297,7 @@ class Camera2Session implements CameraSession {
     this.width = width;
     this.height = height;
     this.framerate = framerate;
+    this.orientationHelper = new OrientationHelper();
 
     start();
   }
@@ -302,21 +308,16 @@ class Camera2Session implements CameraSession {
 
     try {
       cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId);
-    } catch (CameraAccessException | IllegalArgumentException e) {
+    } catch (final Throwable e) {
       reportError("getCameraCharacteristics(): " + e.getMessage());
       return;
     }
+    orientationHelper.start();
     cameraOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
     isCameraFrontFacing = cameraCharacteristics.get(CameraCharacteristics.LENS_FACING)
         == CameraMetadata.LENS_FACING_FRONT;
 
     findCaptureFormat();
-
-    if (captureFormat == null) {
-      // findCaptureFormat reports an error already.
-      return;
-    }
-
     openCamera();
   }
 
@@ -355,7 +356,7 @@ class Camera2Session implements CameraSession {
 
     try {
       cameraManager.openCamera(cameraId, new CameraStateCallback(), cameraThreadHandler);
-    } catch (CameraAccessException | IllegalArgumentException | SecurityException e) {
+    } catch (Exception e) {
       reportError("Failed to open camera: " + e);
       return;
     }
@@ -392,6 +393,9 @@ class Camera2Session implements CameraSession {
       cameraDevice.close();
       cameraDevice = null;
     }
+    if (orientationHelper != null) {
+      orientationHelper.stop();
+    }
 
     Logging.d(TAG, "Stop done");
   }
@@ -411,10 +415,12 @@ class Camera2Session implements CameraSession {
   }
 
   private int getFrameOrientation() {
-    int rotation = CameraSession.getDeviceOrientation(applicationContext);
-    if (!isCameraFrontFacing) {
+    int rotation = LivePlayer.recording != null ? 0 : orientationHelper.getOrientation();
+    OrientationHelper.cameraOrientation = rotation;
+    if (isCameraFrontFacing) {
       rotation = 360 - rotation;
     }
+    OrientationHelper.cameraRotation = rotation;
     return (cameraOrientation + rotation) % 360;
   }
 

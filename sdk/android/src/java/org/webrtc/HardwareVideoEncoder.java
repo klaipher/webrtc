@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
+
+import org.telegram.messenger.FileLog;
 import org.webrtc.ThreadUtils.ThreadChecker;
 
 /**
@@ -356,6 +358,7 @@ class HardwareVideoEncoder implements VideoEncoder {
       return VideoCodecStatus.UNINITIALIZED;
     }
 
+    final VideoFrame.Buffer videoFrameBuffer = videoFrame.getBuffer();
     final boolean isTextureBuffer = videoFrame.getBuffer() instanceof VideoFrame.TextureBuffer;
 
     // If input resolution changed, restart the codec with the new resolution.
@@ -386,6 +389,9 @@ class HardwareVideoEncoder implements VideoEncoder {
       requestKeyFrame(videoFrame.getTimestampNs());
     }
 
+    // Number of bytes in the video buffer. Y channel is sampled at one byte per pixel; U and V are
+    // subsampled at one byte per four pixels.
+    int bufferSize = videoFrameBuffer.getHeight() * videoFrameBuffer.getWidth() * 3 / 2;
     EncodedImage.Builder builder = EncodedImage.builder()
                                        .setCaptureTimeNs(videoFrame.getTimestampNs())
                                        .setEncodedWidth(videoFrame.getBuffer().getWidth())
@@ -403,7 +409,7 @@ class HardwareVideoEncoder implements VideoEncoder {
     if (useSurfaceMode) {
       returnValue = encodeTextureBuffer(videoFrame, presentationTimestampUs);
     } else {
-      returnValue = encodeByteBuffer(videoFrame, presentationTimestampUs);
+      returnValue = encodeByteBuffer(videoFrame, videoFrameBuffer, bufferSize);
     }
 
     // Check if the queue was successful.
@@ -419,6 +425,7 @@ class HardwareVideoEncoder implements VideoEncoder {
       VideoFrame videoFrame, long presentationTimestampUs) {
     encodeThreadChecker.checkIsOnValidThread();
     try {
+      textureEglBase.makeCurrent();
       // TODO(perkj): glClear() shouldn't be necessary since every pixel is covered anyway,
       // but it's a workaround for bug webrtc:5147.
       GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
@@ -426,7 +433,7 @@ class HardwareVideoEncoder implements VideoEncoder {
       VideoFrame derotatedFrame =
           new VideoFrame(videoFrame.getBuffer(), 0 /* rotation */, videoFrame.getTimestampNs());
       videoFrameDrawer.drawFrame(derotatedFrame, textureDrawer, null /* additionalRenderMatrix */);
-      textureEglBase.swapBuffers(TimeUnit.MICROSECONDS.toNanos(presentationTimestampUs));
+      textureEglBase.swapBuffers(TimeUnit.MICROSECONDS.toNanos(presentationTimestampUs), false);
     } catch (RuntimeException e) {
       Logging.e(TAG, "encodeTexture failed", e);
       return VideoCodecStatus.ERROR;
@@ -434,8 +441,22 @@ class HardwareVideoEncoder implements VideoEncoder {
     return VideoCodecStatus.OK;
   }
 
-  private VideoCodecStatus encodeByteBuffer(VideoFrame videoFrame, long presentationTimestampUs) {
+  @Override
+  public VideoCodecStatus setRateAllocation(BitrateAllocation bitrateAllocation, int framerate) {
     encodeThreadChecker.checkIsOnValidThread();
+    if (framerate > MAX_VIDEO_FRAMERATE) {
+      framerate = MAX_VIDEO_FRAMERATE;
+    }
+    bitrateAdjuster.setTargets(bitrateAllocation.getSum(), framerate);
+    return VideoCodecStatus.OK;
+  }
+
+  private VideoCodecStatus encodeByteBuffer(
+          VideoFrame videoFrame, VideoFrame.Buffer videoFrameBuffer, int bufferSize) {
+    encodeThreadChecker.checkIsOnValidThread();
+    // Frame timestamp rounded to the nearest microsecond.
+    long presentationTimestampUs = (videoFrame.getTimestampNs() + 500) / 1000;
+
     // No timeout.  Don't block for an input buffer, drop frames if the encoder falls behind.
     int index;
     try {
@@ -461,8 +482,8 @@ class HardwareVideoEncoder implements VideoEncoder {
 
     if (buffer.capacity() < frameSizeBytes) {
       Logging.e(TAG,
-          "Input buffer size: " + buffer.capacity()
-              + " is smaller than frame size: " + frameSizeBytes);
+              "Input buffer size: " + buffer.capacity()
+                      + " is smaller than frame size: " + frameSizeBytes);
       return VideoCodecStatus.ERROR;
     }
 
@@ -470,22 +491,12 @@ class HardwareVideoEncoder implements VideoEncoder {
 
     try {
       codec.queueInputBuffer(
-          index, 0 /* offset */, frameSizeBytes, presentationTimestampUs, 0 /* flags */);
+              index, 0 /* offset */, frameSizeBytes, presentationTimestampUs, 0 /* flags */);
     } catch (IllegalStateException e) {
       Logging.e(TAG, "queueInputBuffer failed", e);
       // IllegalStateException thrown when the codec is in the wrong state.
       return VideoCodecStatus.ERROR;
     }
-    return VideoCodecStatus.OK;
-  }
-
-  @Override
-  public VideoCodecStatus setRateAllocation(BitrateAllocation bitrateAllocation, int framerate) {
-    encodeThreadChecker.checkIsOnValidThread();
-    if (framerate > MAX_VIDEO_FRAMERATE) {
-      framerate = MAX_VIDEO_FRAMERATE;
-    }
-    bitrateAdjuster.setTargets(bitrateAllocation.getSum(), framerate);
     return VideoCodecStatus.OK;
   }
 
@@ -528,6 +539,7 @@ class HardwareVideoEncoder implements VideoEncoder {
   }
 
   private VideoCodecStatus resetCodec(int newWidth, int newHeight, boolean newUseSurfaceMode) {
+    FileLog.d("resetCodec " + newWidth + "x" + newHeight);
     encodeThreadChecker.checkIsOnValidThread();
     VideoCodecStatus status = release();
     if (status != VideoCodecStatus.OK) {

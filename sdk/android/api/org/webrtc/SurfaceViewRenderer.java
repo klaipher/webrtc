@@ -17,6 +17,7 @@ import android.os.Looper;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.util.Log;
 
 /**
  * Display the video stream on a SurfaceView.
@@ -190,7 +191,7 @@ public class SurfaceViewRenderer extends SurfaceView
   protected void onMeasure(int widthSpec, int heightSpec) {
     ThreadUtils.checkIsOnMainThread();
     Point size =
-        videoLayoutMeasure.measure(widthSpec, heightSpec, rotatedFrameWidth, rotatedFrameHeight);
+        videoLayoutMeasure.measure(true, widthSpec, heightSpec, rotatedFrameWidth, rotatedFrameHeight);
     setMeasuredDimension(size.x, size.y);
     logD("onMeasure(). New size: " + size.x + "x" + size.y);
   }

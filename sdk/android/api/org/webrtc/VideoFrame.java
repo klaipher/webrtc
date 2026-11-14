@@ -38,10 +38,8 @@ public class VideoFrame implements RefCounted {
     /**
      * Representation of the underlying buffer. Currently, only NATIVE and I420 are supported.
      */
-    @CalledByNative("Buffer")
-    @VideoFrameBufferType
     default int getBufferType() {
-      return VideoFrameBufferType.NATIVE;
+      return 0;
     }
 
     /**
@@ -78,7 +76,7 @@ public class VideoFrame implements RefCounted {
   public interface I420Buffer extends Buffer {
     @Override
     default int getBufferType() {
-      return VideoFrameBufferType.I420;
+      return 1;
     }
 
     /**

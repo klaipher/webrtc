@@ -18,6 +18,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import org.telegram.ui.Stories.LivePlayer;
 import org.webrtc.CameraEnumerationAndroid.CaptureFormat;
 
 @SuppressWarnings("deprecation")
@@ -45,6 +47,8 @@ class Camera1Session implements CameraSession {
   private final CaptureFormat captureFormat;
   // Used only for stats. Only used on the camera thread.
   private final long constructionTimeNs; // Construction time of this class.
+
+  private OrientationHelper orientationHelper;
 
   private SessionState state;
   private boolean firstFrameReported;
@@ -182,6 +186,7 @@ class Camera1Session implements CameraSession {
     this.info = info;
     this.captureFormat = captureFormat;
     this.constructionTimeNs = constructionTimeNs;
+    this.orientationHelper = new OrientationHelper();
 
     surfaceTextureHelper.setTextureSize(captureFormat.width, captureFormat.height);
 
@@ -254,6 +259,9 @@ class Camera1Session implements CameraSession {
     camera.stopPreview();
     camera.release();
     events.onCameraClosed(this);
+    if (orientationHelper != null) {
+      orientationHelper.stop();
+    }
     Logging.d(TAG, "Stop done");
   }
 
@@ -325,10 +333,12 @@ class Camera1Session implements CameraSession {
   }
 
   private int getFrameOrientation() {
-    int rotation = CameraSession.getDeviceOrientation(applicationContext);
-    if (info.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+    int rotation = LivePlayer.recording != null ? 0 : orientationHelper.getOrientation();
+    OrientationHelper.cameraOrientation = rotation;
+    if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
       rotation = 360 - rotation;
     }
+    OrientationHelper.cameraRotation = rotation;
     return (info.orientation + rotation) % 360;
   }
 

@@ -44,7 +44,7 @@ import org.webrtc.audio.JavaAudioDeviceModule.AudioRecordStartErrorCode;
 import org.webrtc.audio.JavaAudioDeviceModule.AudioRecordStateCallback;
 import org.webrtc.audio.JavaAudioDeviceModule.SamplesReadyCallback;
 
-class WebRtcAudioRecord {
+public class WebRtcAudioRecord {
   private static final String TAG = "WebRtcAudioRecordExternal";
 
   // Requested size of each recorded buffer provided to the client.

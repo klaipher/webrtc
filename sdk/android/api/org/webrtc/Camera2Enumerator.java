@@ -10,6 +10,7 @@
 
 package org.webrtc;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
@@ -20,8 +21,9 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Build;
 import android.os.SystemClock;
-import android.util.Range;
 import androidx.annotation.Nullable;
+import android.util.AndroidException;
+import android.util.Range;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import org.webrtc.CameraEnumerationAndroid.CaptureFormat;
 
+@TargetApi(21)
 public class Camera2Enumerator implements CameraEnumerator {
   private final static String TAG = "Camera2Enumerator";
   private final static double NANO_SECONDS_PER_SECOND = 1.0e9;
@@ -50,8 +53,11 @@ public class Camera2Enumerator implements CameraEnumerator {
   public String[] getDeviceNames() {
     try {
       return cameraManager.getCameraIdList();
-    } catch (CameraAccessException e) {
-      Logging.e(TAG, "Camera access exception", e);
+      // On Android OS pre 4.4.2, a class will not load because of VerifyError if it contains a
+      // catch statement with an Exception from a newer API, even if the code is never executed.
+      // https://code.google.com/p/android/issues/detail?id=209129
+    } catch (/* CameraAccessException */ AndroidException e) {
+      Logging.e(TAG, "Camera access exception: " + e);
       return new String[] {};
     }
   }
@@ -89,8 +95,11 @@ public class Camera2Enumerator implements CameraEnumerator {
   private @Nullable CameraCharacteristics getCameraCharacteristics(String deviceName) {
     try {
       return cameraManager.getCameraCharacteristics(deviceName);
-    } catch (CameraAccessException | RuntimeException e) {
-      Logging.e(TAG, "Camera access exception", e);
+      // On Android OS pre 4.4.2, a class will not load because of VerifyError if it contains a
+      // catch statement with an Exception from a newer API, even if the code is never executed.
+      // https://code.google.com/p/android/issues/detail?id=209129
+    } catch (/* CameraAccessException */ AndroidException e) {
+      Logging.e(TAG, "Camera access exception: " + e);
       return null;
     }
   }
@@ -109,8 +118,11 @@ public class Camera2Enumerator implements CameraEnumerator {
           return false;
         }
       }
-    } catch (CameraAccessException | RuntimeException e) {
-      Logging.e(TAG, "Failed to check if camera2 is supported", e);
+      // On Android OS pre 4.4.2, a class will not load because of VerifyError if it contains a
+      // catch statement with an Exception from a newer API, even if the code is never executed.
+      // https://code.google.com/p/android/issues/detail?id=209129
+    } catch (/* CameraAccessException */ Throwable e) {
+      Logging.e(TAG, "Camera access exception: " + e);
       return false;
     }
     return true;

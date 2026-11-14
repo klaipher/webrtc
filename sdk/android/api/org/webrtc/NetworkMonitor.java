@@ -211,11 +211,6 @@ public class NetworkMonitor {
           List<NetworkChangeDetector.ConnectionType> types, int preference) {
         notifyObserversOfNetworkPreference(types, preference);
       }
-
-      @Override
-      public String getFieldTrialsString() {
-        return fieldTrialsString;
-      }
     }, appContext);
   }
 

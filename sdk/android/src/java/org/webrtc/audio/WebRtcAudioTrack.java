@@ -20,6 +20,8 @@ import android.os.Build;
 import android.os.Process;
 import androidx.annotation.Nullable;
 import java.nio.ByteBuffer;
+
+import org.telegram.messenger.FileLog;
 import org.webrtc.CalledByNative;
 import org.webrtc.Logging;
 import org.webrtc.ThreadUtils;
@@ -47,7 +49,16 @@ class WebRtcAudioTrack {
 
   // By default, WebRTC creates audio tracks with a usage attribute
   // corresponding to voice communications, such as telephony or VoIP.
-  private static final int DEFAULT_USAGE = AudioAttributes.USAGE_VOICE_COMMUNICATION;
+  private static final int DEFAULT_USAGE = getDefaultUsageAttribute();
+
+  private static int getDefaultUsageAttribute() {
+    if (Build.VERSION.SDK_INT >= 21) {
+      return AudioAttributes.USAGE_VOICE_COMMUNICATION;
+    } else {
+      // Not used on SDKs lower than L.
+      return 0;
+    }
+  }
 
   // Indicates the AudioTrack has started playing audio.
   private static final int AUDIO_TRACK_START = 0;
@@ -87,6 +98,11 @@ class WebRtcAudioTrack {
     private volatile boolean keepAlive = true;
     private LowLatencyAudioBufferManager bufferManager;
 
+    private long writtenFrames = 0;
+    private long lastPlaybackHeadPosition = 0;
+    private long lastTimestamp = System.nanoTime();
+    private long targetTimeNs;
+
     public AudioTrackThread(String name) {
       super(name);
       bufferManager = new LowLatencyAudioBufferManager();
@@ -104,6 +120,10 @@ class WebRtcAudioTrack {
       // Fixed size in bytes of each 10ms block of audio data that we ask for
       // using callbacks to the native WebRTC client.
       final int sizeInBytes = byteBuffer.capacity();
+      final int bytesPerFrame = audioTrack.getChannelCount() * (BITS_PER_SAMPLE / 8);
+      final int sampleRate = audioTrack.getSampleRate();
+
+      targetTimeNs = System.nanoTime();
 
       while (keepAlive) {
         // Get 10ms of PCM data from the native WebRTC client. Audio data is
@@ -119,7 +139,7 @@ class WebRtcAudioTrack {
           byteBuffer.put(emptyBytes);
           byteBuffer.position(0);
         }
-        int bytesWritten = audioTrack.write(byteBuffer, sizeInBytes, AudioTrack.WRITE_BLOCKING);
+        int bytesWritten = writeBytes(audioTrack, byteBuffer, sizeInBytes);
         if (bytesWritten != sizeInBytes) {
           Logging.e(TAG, "AudioTrack.write played invalid number of bytes: " + bytesWritten);
           // If a write() returns a negative value, an error has occurred.
@@ -136,10 +156,41 @@ class WebRtcAudioTrack {
         // increased at each call to AudioTrack.write(). If we don't do this,
         // next call to AudioTrack.write() will fail.
         byteBuffer.rewind();
+// Update the number of written frames
+        writtenFrames += bytesWritten / bytesPerFrame;
 
-        // TODO(henrika): it is possible to create a delay estimate here by
-        // counting number of written frames and subtracting the result from
-        // audioTrack.getPlaybackHeadPosition().
+        // Calculate the playback delay
+        long playbackHeadPosition = audioTrack.getPlaybackHeadPosition();
+        long delayInFrames = writtenFrames - playbackHeadPosition;
+        long delayInMs = (delayInFrames * 1000) / sampleRate;
+
+        // The byte buffer must be rewinded since byteBuffer.position() is
+        // increased at each call to AudioTrack.write(). If we don't do this,
+        // next call to AudioTrack.write() will fail.
+        byteBuffer.rewind();
+
+        // Calculate the time to sleep to maintain a steady playback rate
+        targetTimeNs += CALLBACK_BUFFER_SIZE_MS * 1_000_000L; // 10ms in nanoseconds
+        long currentTimeNs = System.nanoTime();
+        long sleepTimeNs = targetTimeNs - currentTimeNs;
+        if (sleepTimeNs > 0) {
+          try {
+            Thread.sleep(sleepTimeNs / 1_000_000L, (int) (sleepTimeNs % 1_000_000L));
+          } catch (InterruptedException e) {
+            FileLog.e(e);
+          }
+        } else {
+          // Missed deadline
+          targetTimeNs = System.nanoTime(); // Reset target time to current time
+        }
+      }
+    }
+
+    private int writeBytes(AudioTrack audioTrack, ByteBuffer byteBuffer, int sizeInBytes) {
+      if (Build.VERSION.SDK_INT >= 21) {
+        return audioTrack.write(byteBuffer, sizeInBytes, AudioTrack.WRITE_BLOCKING);
+      } else {
+        return audioTrack.write(byteBuffer.array(), byteBuffer.arrayOffset(), sizeInBytes);
       }
     }
 
@@ -393,6 +444,7 @@ class WebRtcAudioTrack {
     }
   }
 
+  @TargetApi(Build.VERSION_CODES.LOLLIPOP)
   private static AudioAttributes getAudioAttributes(@Nullable AudioAttributes overrideAttributes) {
     AudioAttributes.Builder attributesBuilder =
         new AudioAttributes.Builder()
@@ -419,6 +471,7 @@ class WebRtcAudioTrack {
   // Creates and AudioTrack instance using AudioAttributes and AudioFormat as input.
   // It allows certain platforms or routing policies to use this information for more
   // refined volume or routing decisions.
+  @TargetApi(Build.VERSION_CODES.LOLLIPOP)
   private static AudioTrack createAudioTrackBeforeOreo(int sampleRateInHz, int channelConfig,
       int bufferSizeInBytes, @Nullable AudioAttributes overrideAttributes) {
     Logging.d(TAG, "createAudioTrackBeforeOreo");
