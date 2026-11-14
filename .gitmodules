@@ -1,0 +1,6 @@
+# Official upstream dependencies of this tree, one pin each. Consumers (the Nanogram
+# iOS/macOS/Android apps) must use the same commits; nested submodules are shallow.
+[submodule "third_party/abseil-cpp"]
+	path = third_party/abseil-cpp
+	url = https://github.com/abseil/abseil-cpp.git
+	shallow = true
