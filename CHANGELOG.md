@@ -7,6 +7,7 @@ moved under their date when the app repositories pin them.
 
 ## Unreleased
 
+- jni_zero/scoped_java_ref.h includes <iterator> (std::input_iterator_tag did not compile on its own with the NDK 30 libc++; found by the syntax-only check of the carried third_party files).
 - Records: libyuv is named as klaipher/libyuv `nanogram` 947f5326 (upstream 0b8dd231 minus the Bazel files), not 'the official 0b8dd231'; the behaviour-jump list now names the Mac items (reflector ports under 1024, TGCALLS seams, H.264 decoder gate, FFmpeg 7+ pts fix).
 - third_party/libevent removed (84 files): Android moved to the stdlib task queue, iOS and the Mac never compiled libevent. The three build-file lists were regenerated from the integrated app build files (mac 1,462, Android 1,343, iOS 1,288, common 1,113) and BUILD-FILES.md updated.
 - CMake abseil: libabsl is an INTERFACE target over abseil's STATIC archives, which a static `libtg_owt.a` does not absorb (tg_owt had them as an OBJECT library inside it); the Mac ships only that archive. On Apple platforms `cmake/libabsl.cmake` now collects the transitive abseil archives and merges them into `libtg_owt.a` after the build (`libtool -static`, option `TG_OWT_MERGE_ABSEIL`, default ON). Check `nm -u` on the final archive.
