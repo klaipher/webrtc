@@ -49,3 +49,9 @@ Format: docs/fork-records.md in klaipher/nanogram.
 ### CMake libyuv list follows the single libyuv
 - What: `cmake/libyuv.cmake` no longer names `include/libyuv/macros_msa.h` and `source/{compare,rotate,row,scale}_msa.cc`, and the remove_target_sources block for them is gone.
 - Why: libyuv 947f5326 (klaipher/libyuv, used through TG_OWT_LIBYUV_DIR by the Mac build) has no MSA files; `remove_target_sources` only marks them header-only, CMake still needs them to exist, so configure failed.
+
+### EglThread.java removed
+- What: `sdk/android/api/org/webrtc/EglThread.java` is deleted (also from `sdk/android/BUILD.gn`).
+- Why: it imports `EglBase.EglConnection`, which the Telegram-modified `EglBase.java` (folded in with the Android Java, 8cf9fad) does not have, so Gradle compiling the srcDirs failed. The Android app never carried the class. The srcDirs class set is now exactly the 173 files of the old `org/webrtc` set (checked in both directions).
+- Where: `sdk/android/api/org/webrtc/`.
+- Upstream: no. Sync: if `EglBase.java` ever gets `EglConnection` back, the class can return.
