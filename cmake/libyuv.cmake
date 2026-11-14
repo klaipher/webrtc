@@ -24,7 +24,6 @@ PRIVATE
     include/libyuv/convert_from_argb.h
     include/libyuv/cpu_id.h
     include/libyuv/loongson_intrinsics.h
-    include/libyuv/macros_msa.h
     include/libyuv/mjpeg_decoder.h
     include/libyuv/planar_functions.h
     include/libyuv/rotate.h
@@ -90,18 +89,12 @@ PRIVATE
     source/scale_neon.cc
     source/scale_neon64.cc
 
-    # MSA Source Files
-    source/compare_msa.cc
-    source/rotate_msa.cc
-    source/row_msa.cc
-    source/scale_msa.cc
-
     # RISC-V RVV
     source/row_rvv.cc
     source/scale_rvv.cc
 
     # Nanogram: sources that exist in the official libyuv 0b8dd231 and not in the
-    # 04821d1e snapshot tg_owt built (iOS builds scale_rgb.cc too).
+    # 04821d1e snapshot tg_owt built; libyuv 947f5326 has no MSA files (iOS builds scale_rgb.cc too).
     source/scale_rgb.cc
 )
 
@@ -111,15 +104,6 @@ target_compile_definitions(libyuv
 PRIVATE
     LIBYUV_DISABLE_SVE
     LIBYUV_DISABLE_SME
-)
-
-remove_target_sources(libyuv ${libyuv_loc}
-
-    # MSA Source Files
-    source/compare_msa.cc
-    source/rotate_msa.cc
-    source/row_msa.cc
-    source/scale_msa.cc
 )
 
 if (arm_use_neon)

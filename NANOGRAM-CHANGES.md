@@ -45,3 +45,7 @@ Format: docs/fork-records.md in klaipher/nanogram.
   `ABSL_ATTRIBUTE_LIFETIME_BOUND` (fallback patch in `patches/`).
 - Not carried, on purpose: Windows/Linux/FreeBSD desktop-app edits, the system-libsrtp option, Telegram's `FileLog`
   debug counters, Android's commented-out AVX2 dispatch (use `-mavx2 -mfma`).
+
+### CMake libyuv list follows the single libyuv
+- What: `cmake/libyuv.cmake` no longer names `include/libyuv/macros_msa.h` and `source/{compare,rotate,row,scale}_msa.cc`, and the remove_target_sources block for them is gone.
+- Why: libyuv 947f5326 (klaipher/libyuv, used through TG_OWT_LIBYUV_DIR by the Mac build) has no MSA files; `remove_target_sources` only marks them header-only, CMake still needs them to exist, so configure failed.
