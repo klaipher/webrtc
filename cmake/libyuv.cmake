@@ -4,7 +4,7 @@ add_library(tg_owt::libyuv ALIAS libyuv)
 
 link_libjpeg(libyuv)
 
-# Nanogram: libyuv is the one official source (0b8dd231) that the app repositories pin; this
+# Nanogram: libyuv is the one source klaipher/libyuv `nanogram` (947f5326 = upstream 0b8dd231 minus the Bazel files) that the app repositories pin; this
 # repository does not carry it. Pass -DTG_OWT_LIBYUV_DIR=<path to the libyuv checkout>.
 set(TG_OWT_LIBYUV_DIR "" CACHE PATH "Path to the libyuv checkout (include/, source/).")
 if (TG_OWT_LIBYUV_DIR STREQUAL "")
@@ -93,12 +93,12 @@ PRIVATE
     source/row_rvv.cc
     source/scale_rvv.cc
 
-    # Nanogram: sources that exist in the official libyuv 0b8dd231 and not in the
+    # Nanogram: sources that exist in libyuv 947f5326 (upstream 0b8dd231) and not in the
     # 04821d1e snapshot tg_owt built; libyuv 947f5326 has no MSA files (iOS builds scale_rgb.cc too).
     source/scale_rgb.cc
 )
 
-# libyuv 0b8dd231: SVE/SME kernels stay off (as in the iOS BUILD), and the AArch64 Neon
+# libyuv 947f5326 (upstream 0b8dd231): SVE/SME kernels stay off (as in the iOS BUILD), and the AArch64 Neon
 # kernels use dot-product and i8mm instructions (iOS: -march=armv8-a+dotprod+i8mm).
 target_compile_definitions(libyuv
 PRIVATE

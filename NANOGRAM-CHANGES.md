@@ -43,6 +43,10 @@ Format: docs/fork-records.md in klaipher/nanogram.
 - Sync: after an upstream move, re-run `nanogram/gen_build_lists.py` for each platform and compare the lists.
 - Behaviour jumps to test: libsrtp 2.2.0 -> 2.5.0 on iOS and Android (SRTP interop), abseil on all three, Apple Clang vs
   `ABSL_ATTRIBUTE_LIFETIME_BOUND` (fallback patch in `patches/`).
+  Behaviour jumps for the Mac (moving off tg_owt `nanogram-mac`), to put in the call matrix: reflector candidates on ports
+  under 1024 are exempt from the port filter; the five TGCALLS seams are now in the tree; `WEBRTC_USE_H264_DECODER`
+  (the FFmpeg H.264 decoder gate) is defined on the Mac, so test H.264 decode there; the FFmpeg 7+ pts fix; the
+  debug-log hunks are gone. (The libsrtp GCM gate is not a jump: 2.2.0 loads GCM under `OPENSSL`, 2.5.0 under `GCM`, which the config defines.)
 - Not carried, on purpose: Windows/Linux/FreeBSD desktop-app edits, the system-libsrtp option, Telegram's `FileLog`
   debug counters, Android's commented-out AVX2 dispatch (use `-mavx2 -mfma`).
 
